@@ -34,10 +34,23 @@ func CheckTokenExists(token string) bool {
 	return true
 }
 
-func GenerateAndSaveCodeIntoDb() (string, error) {
-	code := generateCode()
-	// Сохраняем код в БД
-	_, err := db.Exec("INSERT INTO records (code, data) VALUES (?, '')", code)
+func GenerateAndSaveCodeIntoDb(chat_id int64) (string, error) {
+	var code string
+
+	// Проверяем, есть ли уже токен для данного chat_id
+	err := db.QueryRow("SELECT code FROM records WHERE chat_id = ?", chat_id).Scan(&code)
+	if err == sql.ErrNoRows {
+		// Если токена нет, создаем новый
+		code = generateCode()
+		_, err = db.Exec("INSERT INTO records (chat_id, code, data) VALUES (?, ?, '')", chat_id, code)
+		if err != nil {
+			log.Println("Ошибка сохранения кода:", err)
+			return "", err
+		}
+	} else if err != nil {
+		log.Println("Ошибка запроса в БД:", err)
+		return "", err
+	}
 	return code, err
 }
 
@@ -65,6 +78,47 @@ func ReadJsonFromDb(code string) (string, error) {
 	return data, err
 }
 
+func migrateDB() {
+	// Проверяем, есть ли столбец chat_id в таблице records
+	rows, err := db.Query("PRAGMA table_info(records)")
+	if err != nil {
+		log.Fatal("Ошибка при запросе структуры таблицы:", err)
+	}
+	defer rows.Close()
+
+	columnExists := false
+	for rows.Next() {
+		var (
+			cid        int
+			name       string
+			ctype      string
+			notnull    int
+			dflt_value sql.NullString
+			pk         int
+		)
+		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dflt_value, &pk); err != nil {
+			log.Fatal("Ошибка при чтении структуры таблицы:", err)
+		}
+
+		// Проверяем, есть ли колонка "chat_id"
+		if name == "chat_id" {
+			columnExists = true
+			break
+		}
+	}
+
+	if !columnExists {
+		log.Println("Обновление схемы базы данных: добавление chat_id...")
+		_, err := db.Exec("ALTER TABLE records ADD COLUMN chat_id INTEGER DEFAULT 0")
+		if err != nil {
+			log.Fatal("Ошибка при добавлении chat_id:", err)
+		}
+		log.Println("Миграция завершена: поле chat_id добавлено.")
+	} else {
+		log.Println("Миграция не требуется: поле chat_id уже существует.")
+	}
+}
+
 func BootstrapDb() {
 	// Инициализация базы данных
 	var err error
@@ -76,6 +130,7 @@ func BootstrapDb() {
 	// Создание таблицы, если ее нет
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS records (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		chat_id INTEGER NOT NULL,
 		code TEXT UNIQUE,
 		data TEXT
 	)`)
@@ -83,6 +138,9 @@ func BootstrapDb() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	migrateDB()
+
 }
 
 func CloseDb() error {

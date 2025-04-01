@@ -22,6 +22,10 @@ type InfoResponse struct {
 	SearchHistory []string `json:"search_history"`
 }
 
+type CreateUserRequest struct {
+	ID int64 `json:"id"`
+}
+
 func checkToken(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get("token")
 
@@ -96,7 +100,14 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := db.GenerateAndSaveCodeIntoDb()
+	var user CreateUserRequest
+	if json.NewDecoder(r.Body).Decode(&user) != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	token, err := db.GenerateAndSaveCodeIntoDb(user.ID)
+
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return

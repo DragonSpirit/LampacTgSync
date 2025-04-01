@@ -44,7 +44,7 @@ func BootstrapBot() {
 // Обработка команды /start
 func handleStart(bot *tgbotapi.BotAPI, msg *tgbotapi.Message) {
 	// Сохраняем код в БД
-	code, err := db.GenerateAndSaveCodeIntoDb()
+	code, err := db.GenerateAndSaveCodeIntoDb(msg.Chat.ID)
 	if err != nil {
 		log.Println("Ошибка сохранения кода:", err)
 		_, err := bot.Send(tgbotapi.NewMessage(msg.Chat.ID, "Ошибка при генерации кода"))
