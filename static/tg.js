@@ -7,8 +7,8 @@
     
     // Секция конфигурации **********
     
-    var botLink = "https://t.me/lampac_sync_bot"
-    var syncUrl = "http://192.168.1.133:8080"
+    var botLink = window.botLink || "https://t.me/lampac_sync_bot"
+    var syncUrl = window.syncUrl || "http://192.168.1.133:8080"
 
     // ******************************
 
@@ -21,6 +21,8 @@
     "</div>"+
     "<div id=\"qrcode\" style=\"width: 100px; height: 100px; margin-left: 1em; border-radius: 0.3em;\">"+
     "</div>");
+
+    var qrcode;
 
 
     function initializeAccountSettings() {
@@ -41,8 +43,17 @@
             Lampa.Controller.toggle("settings_component");
           } else {
             $("div[data-name=\"acc_auth\"]").before(accountInfoBlock);
-            new QRCode(document.getElementById("qrcode"), botLink);
+            if (qrcode) {
+              qrcode.clear();
+              qrcode.makeCode(botLink)
+            } else {
+              qrcode = new QRCode(document.getElementById("qrcode"), botLink);
+            }
             $("div > span:contains(\"Аккаунт\")").hide();
+            $("div[data-name=\"acc_sync\"]").hide();
+            $("div[data-name=\"sync_init\"]").hide();
+            $("div[data-name=\"sync_reset\"]").hide();
+            $("#app > div.settings > div.settings__content.layer--height > div.settings__body > div > div > div > div > div:nth-child(6)").hide();
             $(".settings-param > div:contains(\"Выйти\")").parent().hide();
           }
         }
@@ -118,7 +129,6 @@
         },
         field: {
           name: "Выйти из аккаунта",
-          description: ""
         },
         onRender: function (item) {
           item.on("hover:enter", function () {
@@ -136,7 +146,6 @@
         },
         field: {
           name: "Синхронизация",
-          description: ""
         }
       });
       Lampa.SettingsApi.addParam({
@@ -202,12 +211,13 @@
             }.bind(this), 500);
           }
         },
-        startSync: function (token) {
+        startSync: function (token, onSuccess) {
           console.log("Запуск синхронизации...");
           this.isSyncSuccessful = false;
           this.sendDataToServer(token).then(function () {
             if (this.isSyncSuccessful) {
               console.log("Синхронизация успешно завершена");
+              onSuccess && onSuccess();
             } else {
               console.log("Ошибка: Данные для синхронизации отсутствуют");
             }
@@ -327,7 +337,7 @@
         component: "acc",
         param: {
           name: "sync_init",
-          type: "static"
+          type: "button"
         },
         field: {
           name: "Первичная синхронизация",
@@ -340,7 +350,9 @@
               Lampa.Noty.show("Вы не зашли в аккаунт");
               return
             }
-            plugInfo.startSync(token)
+            plugInfo.startSync(token, function () {
+              Lampa.Noty.show("Первичная синхронизация завершена");
+            })
           });
         }
       });
@@ -348,7 +360,7 @@
         component: "acc",
         param: {
           name: "sync_reset",
-          type: "static"
+          type: "button"
         },
         field: {
           name: "Сброс данных синхронизации",

@@ -30,6 +30,7 @@ test:
 # Clean target
 clean:
 	rm -f $(PROJECT_NAME)
+	rm -rf dist/
 
 # Run target
 run:
