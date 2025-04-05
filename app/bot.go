@@ -10,7 +10,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-func BootstrapBot() {
+func BootstrapBot(appContext *AppContext) {
 	// Получаем токен из переменных окружения
 	botToken := os.Getenv("TELEGRAM_BOT_TOKEN")
 	if botToken == "" {
@@ -24,6 +24,7 @@ func BootstrapBot() {
 
 	bot.Debug = true
 	log.Printf("Бот %s запущен\n", bot.Self.UserName)
+	appContext.botName = bot.Self.UserName
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60

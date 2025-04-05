@@ -14,6 +14,7 @@ import (
 )
 
 func main() {
+	appContext := &app.AppContext{}
 	// Загружаем переменные окружения из .env
 	err := godotenv.Load()
 	if err != nil {
@@ -27,14 +28,14 @@ func main() {
 	db.BootstrapDb()
 
 	go func() {
-		app.BootstrapHTTPServer()
+		app.BootstrapHTTPServer(appContext)
 	}()
 
 	useTelegramBot := os.Getenv("USE_TELEGRAM_BOT")
 
 	if useTelegramBot == "true" {
 		go func() {
-			app.BootstrapBot()
+			app.BootstrapBot(appContext)
 		}()
 	}
 

@@ -7,21 +7,50 @@
     
     // Секция конфигурации **********
     
-    var botLink = window.botLink || "https://t.me/lampac_sync_bot"
     var syncUrl = window.syncUrl || "http://192.168.1.133:8080"
 
     // ******************************
 
-    var qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=" + encodeURIComponent(botLink);
-    var accountInfoBlock = $("<div class=\"myBot\" style=\"line-height: 1;color: currentColor;font-family: 'Segoe UI', sans-serif;font-size: 1em;box-sizing: border-box;outline: none;user-select: none;display: flex;flex-direction: row;align-items: center;position: relative;background-color: rgba(255, 255, 255, 0.1);border-radius: 0.3em;margin: 1.5em 2em;padding: 1em;\">"+
-    "<div style=\"flex: 1;\">"+
-        "<div class=\"ad-server__text\" style=\"padding: unset; padding-bottom: 0.5em;\">Для получения токена перейдите в Telegram бот</div>"+
-        "<div style=\"background-color: #E0C3FC;padding: 0.5em;color: #000;border-radius: 0.3em;margin-top: 0.5em;\">"+
-            "<a href=\"" + botLink + "\" style=\"color: #000;text-decoration: none;\">" + botLink + "</a>"+
-        "</div>"+
-    "</div>"+
-       "<img src=\"" + qrCodeUrl + "\" alt=\"QR Code\" style=\"width: 100px; height: 100px; margin-left: 1em; border-radius: 0.3em;\">"+
-    "</div>");
+    var botLink;
+
+    function makeHttpRequest(type, url, data) {
+      return new Promise(function (onSuccess, onError) {
+        var xhr = new XMLHttpRequest();
+        xhr.open(type, url, true);
+        if (type === "POST") {
+          xhr.send(data);
+        } else {
+          xhr.send();
+        }
+        xhr.onload = function () {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            onSuccess(xhr);
+          } else {
+            onError(xhr);
+          }
+        };
+        xhr.onerror = function () {
+          onError(xhr);
+        };
+      });
+    }
+
+    (function loadPluginInfo() {
+      makeHttpRequest("GET", syncUrl + "/info")
+        .then(function (response) {
+          if (response.status === 200) {
+            var info = JSON.parse(response.responseText);
+            botLink = info.botLink;
+          } else {
+            console.log("Ошибка при загрузке информации о плагине: " + response.status + " - " + response.statusText);
+            Lampa.Noty.show("Ошибка при загрузке информации о плагине");
+          }
+        })
+        .catch(function (error) {
+          console.error(error);
+          Lampa.Noty.show("Ошибка при загрузке информации о плагине");
+      })
+    })()
 
     function initializeAccountSettings() {
       Lampa.SettingsApi.addComponent({
@@ -40,6 +69,15 @@
             Lampa.Controller.focus(element);
             Lampa.Controller.toggle("settings_component");
           } else {
+            var accountInfoBlock = $("<div class=\"myBot\" style=\"line-height: 1;color: currentColor;font-family: 'Segoe UI', sans-serif;font-size: 1em;box-sizing: border-box;outline: none;user-select: none;display: flex;flex-direction: row;align-items: center;position: relative;background-color: rgba(255, 255, 255, 0.1);border-radius: 0.3em;margin: 1.5em 2em;padding: 1em;\">"+
+            "<div style=\"flex: 1;\">"+
+                "<div class=\"ad-server__text\" style=\"padding: unset; padding-bottom: 0.5em;\">Для получения токена перейдите в Telegram бот</div>"+
+                "<div style=\"background-color: #E0C3FC;padding: 0.5em;color: #000;border-radius: 0.3em;margin-top: 0.5em;\">"+
+                    "<a href=\"" + botLink + "\" style=\"color: #000;text-decoration: none;\">" + botLink + "</a>"+
+                "</div>"+
+            "</div>"+
+              "<img src=\"" + syncUrl + "/qr\" alt=\"QR Code\" style=\"width: 100px; height: 100px; margin-left: 1em; border-radius: 0.3em;\">"+
+            "</div>");
             $("div[data-name=\"acc_auth\"]").before(accountInfoBlock);
             $("div > span:contains(\"Аккаунт\")").hide();
             $("div[data-name=\"acc_sync\"]").hide();
@@ -223,7 +261,7 @@
           var syncedData = this.getSyncedData();
           var data = new FormData();
           data.append("syncedData", JSON.stringify(syncedData))
-          return this.makeHttpRequest("POST", syncUrl + "/sync?token=" + encodeURIComponent(token), data).then(function (response) {
+          return makeHttpRequest("POST", syncUrl + "/sync?token=" + encodeURIComponent(token), data).then(function (response) {
             if (response.status === 200) {
               this.isSyncSuccessful = true;
               return response.responseText;
@@ -242,7 +280,7 @@
           };
         },
         loadDataFromServer: function (token) {
-          return this.makeHttpRequest("GET", syncUrl + "/sync?token=" + encodeURIComponent(token)).then(function (response) {
+          return makeHttpRequest("GET", syncUrl + "/sync?token=" + encodeURIComponent(token)).then(function (response) {
             if (response.status === 200) {
               return JSON.parse(response.responseText);
             } else {
@@ -251,27 +289,6 @@
           }).then(function (res) {
               console.log(['loadDataFromServer', res])
               return res ? res : (console.log("Ошибка: Данные для синхронизации отсутствуют"), null);
-          });
-        },
-        makeHttpRequest: function (type, url, data) {
-          return new Promise(function (onSuccess, onError) {
-            var xhr = new XMLHttpRequest();
-            xhr.open(type, url, true);
-            if (type === "POST") {
-              xhr.send(data);
-            } else {
-              xhr.send();
-            }
-            xhr.onload = function () {
-              if (xhr.status >= 200 && xhr.status < 300) {
-                onSuccess(xhr);
-              } else {
-                onError(xhr);
-              }
-            };
-            xhr.onerror = function () {
-              onError(xhr);
-            };
           });
         },
         updateLocalStorage: function (data) {
@@ -337,14 +354,34 @@
         },
         onRender: function (item) {
           item.on("hover:enter", function () {
-            var token = localStorage.getItem("token");
-            if (!token) {
-              Lampa.Noty.show("Вы не зашли в аккаунт");
-              return
-            }
-            plugInfo.startSync(token, function () {
-              Lampa.Noty.show("Первичная синхронизация завершена");
-            })
+            Lampa.Modal.open({
+              title: "",
+              align: 'center',
+              html: $('<div class="about">Данные действие перезатрёт существующую историю. Вы уверены?</div>'),
+              onBack: function onBack() {
+                Lampa.Modal.close();
+              },
+              buttons: [{
+                name: "Нет",
+                onSelect: function onSelect() {
+                  Lampa.Modal.close();
+                }
+              }, {
+                name: "Да",
+                onSelect: function onSelect() {
+                  var token = localStorage.getItem("token");
+                  if (!token) {
+                    Lampa.Noty.show("Вы не зашли в аккаунт");
+                    Lampa.Modal.close();
+                    return
+                  }
+                  plugInfo.startSync(token, function () {
+                    Lampa.Noty.show("Первичная синхронизация завершена");
+                  });
+                  Lampa.Modal.close();
+                }
+              }]
+            });
           });
         }
       });

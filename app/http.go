@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/rs/cors"
+	qrcode "github.com/skip2/go-qrcode"
 
 	"github.com/dragonspirit/db"
 )
@@ -24,6 +25,10 @@ type InfoResponse struct {
 
 type CreateUserRequest struct {
 	ID int64 `json:"id"`
+}
+
+type AppInfoResponse struct {
+	BotLink string `json:"botLink"`
 }
 
 func checkToken(w http.ResponseWriter, r *http.Request) {
@@ -116,7 +121,40 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(token))
 }
 
-func BootstrapHTTPServer() {
+func generateQRCode(appContext *AppContext) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		log.Printf("Генерируем QR-код для бота %s", appContext.botName)
+		codeData, err := qrcode.Encode(getBotLink(appContext), qrcode.Medium, 100)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "image/png")
+		w.Write(codeData)
+	}
+}
+
+func getBotLink(appContext *AppContext) string {
+	return "https://t.me/" + appContext.botName
+}
+
+func getInfo(appContext *AppContext) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		response, _ := json.Marshal(AppInfoResponse{BotLink: getBotLink(appContext)})
+		w.Write(response)
+	}
+}
+
+func BootstrapHTTPServer(appContext *AppContext) {
 	port := os.Getenv("PORT")
 	disableCors := os.Getenv("DISABLE_CORS")
 	useStaticServer := os.Getenv("USE_STATIC_SERVER")
@@ -131,6 +169,8 @@ func BootstrapHTTPServer() {
 	mux.HandleFunc("/checkToken", checkToken)
 	mux.HandleFunc("/sync", getUserData)
 	mux.HandleFunc("/user", createUser)
+	mux.HandleFunc("/qr", generateQRCode(appContext))
+	mux.HandleFunc("/info", getInfo(appContext))
 
 	var handler http.Handler = http.Handler(mux)
 
