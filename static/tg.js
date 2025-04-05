@@ -36,7 +36,7 @@
         if (event.name == "acc") {
           if (localStorage.getItem("token") !== null) {
             $("div[data-name=\"acc_auth\"]").hide();
-            var element = document.querySelector("#app > div.settings > div.settings__content.layer--height > div.settings__body > div > div > div > div > div:nth-child(5)");
+            var element = document.querySelector("#app > div.settings > div.settings__content.layer--height > div.settings__body > div > div > div > div > div:nth-child(4)");
             Lampa.Controller.focus(element);
             Lampa.Controller.toggle("settings_component");
           } else {
