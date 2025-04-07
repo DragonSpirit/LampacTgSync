@@ -128,14 +128,21 @@ func generateQRCode(appContext *AppContext) func(http.ResponseWriter, *http.Requ
 			return
 		}
 		log.Printf("Генерируем QR-код для бота %s", appContext.botName)
-		codeData, err := qrcode.Encode(getBotLink(appContext), qrcode.Medium, 100)
+		codeData, err := qrcode.New(getBotLink(appContext), qrcode.Medium)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		codeData.ForegroundColor, codeData.BackgroundColor = codeData.BackgroundColor, codeData.ForegroundColor
+		encodedImage, err := codeData.PNG(128)
+
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		w.Header().Set("Content-Type", "image/png")
-		w.Write(codeData)
+		w.Write(encodedImage)
 	}
 }
 

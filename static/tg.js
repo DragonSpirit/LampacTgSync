@@ -69,15 +69,13 @@
             Lampa.Controller.focus(element);
             Lampa.Controller.toggle("settings_component");
           } else {
-            var accountInfoBlock = $("<div class=\"myBot\" style=\"line-height: 1;color: currentColor;font-family: 'Segoe UI', sans-serif;font-size: 1em;box-sizing: border-box;outline: none;user-select: none;display: flex;flex-direction: row;align-items: center;position: relative;background-color: rgba(255, 255, 255, 0.1);border-radius: 0.3em;margin: 1.5em 2em;padding: 1em;\">"+
-            "<div style=\"flex: 1;\">"+
-                "<div class=\"ad-server__text\" style=\"padding: unset; padding-bottom: 0.5em;\">Для получения токена перейдите в Telegram бот</div>"+
-                "<div style=\"background-color: #E0C3FC;padding: 0.5em;color: #000;border-radius: 0.3em;margin-top: 0.5em;\">"+
-                    "<a href=\"" + botLink + "\" style=\"color: #000;text-decoration: none;\">" + botLink + "</a>"+
-                "</div>"+
-            "</div>"+
-              "<img src=\"" + syncUrl + "/qr\" alt=\"QR Code\" style=\"width: 100px; height: 100px; margin-left: 1em; border-radius: 0.3em;\">"+
-            "</div>");
+            var accountInfoBlock = $("<div class=\"ad-server\">"+
+                "<div class=\"ad-server__text\">Для получения токена перейдите в Telegram бот</div>"+
+                "<img src=\"" + syncUrl + "/qr\" alt=\"QR Code\" style=\"opacity: 1; border: 0.5em solid rgb(60, 62, 63); border-radius: 0.3em;\">"+
+                  "<div class=\"ad-server__label\">"+
+                      "<a href=\"" + botLink + "\" style=\"color: #000;text-decoration: none;\">" + botLink + "</a>"+
+                  "</div>"+
+                "</div>");
             $("div[data-name=\"acc_auth\"]").before(accountInfoBlock);
             $("div > span:contains(\"Вход\")").hide();
             $("div[data-name=\"acc_sync\"]").hide();
